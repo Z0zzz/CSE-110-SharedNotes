@@ -1,6 +1,6 @@
 package edu.ucsd.cse110.sharednotes.model;
 
-import android.provider.MediaStore;
+import android.os.StrictMode;
 import android.util.Log;
 
 import androidx.lifecycle.LiveData;
@@ -8,20 +8,15 @@ import androidx.lifecycle.MediatorLiveData;
 import androidx.lifecycle.MutableLiveData;
 import androidx.lifecycle.Observer;
 
-import java.time.Instant;
 import java.util.List;
 import java.util.concurrent.Executors;
-import java.util.concurrent.ScheduledExecutorService;
-<<<<<<< HEAD
-import java.util.concurrent.TimeUnit;
-=======
 import java.util.concurrent.ScheduledFuture;
->>>>>>> 60a75557c074690a148a024f19e94826fbe10a8b
+import java.util.concurrent.TimeUnit;
 
 public class NoteRepository {
     private final NoteDao dao;
     private ScheduledFuture<?> poller; // what could this be for... hmm?
-
+    NoteAPI api = new NoteAPI();
     public NoteRepository(NoteDao dao) {
         this.dao = dao;
     }
@@ -45,8 +40,10 @@ public class NoteRepository {
 
         Observer<Note> updateFromRemote = theirNote -> {
             var ourNote = note.getValue();
-            Log.i("UpdateFromRemote", ""+ourNote.updatedAt);
-            // Log.i("UpdateFromRemote", ""+theirNote.updatedAt);
+
+            Log.i("UpdateFromRemote", "our note: " + ourNote.version);
+            Log.i("UpdateFromRemote", "remote note: " + theirNote.version);
+
             if (theirNote == null) return; // do nothing
             if (ourNote == null || ourNote.version < theirNote.version) {
                 upsertLocal(theirNote, false);
@@ -80,7 +77,6 @@ public class NoteRepository {
     public void upsertLocal(Note note, boolean incrementVersion) {
         // We don't want to increment when we sync from the server, just when we save.
         if (incrementVersion) note.version = note.version + 1;
-        note.version = note.version + 1;
         dao.upsert(note);
     }
 
@@ -110,7 +106,12 @@ public class NoteRepository {
         }
 
         // Start by fetching the note from the server _once_ and feeding it into MutableLiveData.
-        NoteAPI api = new NoteAPI();
+
+
+        if (this.poller != null && !this.poller.isCancelled()) {
+            poller.cancel(true);
+        }
+
         Log.i("Trying response", title);
         // var executor = Executors.newSingleThreadScheduledExecutor();
         MutableLiveData<Note> realTimeData = new MutableLiveData<>();
@@ -121,6 +122,7 @@ public class NoteRepository {
         }, 0, 3000, TimeUnit.MILLISECONDS);
         MediatorLiveData<Note> noteData = new MediatorLiveData<>();
         noteData.addSource(realTimeData, noteData::postValue);
+
         // Start by fetching the note from the server ONCE.
         // Then, set up a background thread that will poll the server every 3 seconds.
 
@@ -134,6 +136,18 @@ public class NoteRepository {
 
     public void upsertRemote(Note note) {
         // TODO: Implement upsertRemote!
-        throw new UnsupportedOperationException("Not implemented yet");
+        StrictMode.ThreadPolicy gfgPolicy = new StrictMode.ThreadPolicy.Builder().permitAll().build();
+        StrictMode.setThreadPolicy(gfgPolicy);
+        api.put(note);
+
+        /*
+        var thread = executor.scheduleAtFixedRate(() -> {
+            api.put(note);
+        }, 0, 3000, TimeUnit.MILLISECONDS);
+        if (thread != null && !thread.isCancelled()) {
+            thread.cancel(true);
+        }
+        */
+        // throw new UnsupportedOperationException("Not implemented yet");
     }
 }

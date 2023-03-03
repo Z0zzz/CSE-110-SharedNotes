@@ -1,6 +1,7 @@
 package edu.ucsd.cse110.sharednotes.viewmodel;
 
 import android.app.Application;
+import android.util.Log;
 
 import androidx.annotation.NonNull;
 import androidx.lifecycle.AndroidViewModel;
@@ -35,6 +36,8 @@ public class NoteViewModel extends AndroidViewModel {
 
     public void save(Note note) {
         // TODO: try to upload the note to the server.
+        Log.i("save", ""+note.content);
+        repo.upsertRemote(note);
         repo.upsertLocal(note);
     }
 }
