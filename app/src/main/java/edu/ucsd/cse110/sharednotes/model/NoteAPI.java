@@ -10,9 +10,11 @@ import com.google.gson.Gson;
 
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
+import java.io.IOException;
 
 import okhttp3.OkHttpClient;
 import okhttp3.Request;
+import okhttp3.Response;
 
 public class NoteAPI {
     // TODO: Implement the API using OkHttp!
@@ -64,6 +66,38 @@ public class NoteAPI {
             return null;
         }
     }
+
+    public Note get(String title){
+
+        Log.i("Trying response", "something?");
+
+        title = title.replace(" ", "%20");
+        var request = new Request.Builder()
+                .url("https://sharednotes.goto.ucsd.edu/notes/" + title)
+                .method("GET", null)
+                .build();
+
+        try (var response = client.newCall(request).execute()) {
+            String jsonObject = response.body().string();
+            Log.i("Trying response", "something?" + jsonObject);
+            Note note = Note.fromJSON(jsonObject);
+            Log.i("Trying response", "note content " + note.content);
+            return note;
+        }catch(Exception e){
+            e.printStackTrace();
+            return null;
+        }
+    }
+
+    @AnyThread
+    public Future<Note> getAsync(String msg) {
+        var executor = Executors.newSingleThreadExecutor();
+        var future = executor.submit(() -> get(msg));
+
+        // We can use future.get(1, SECONDS) to wait for the result.
+        return future;
+    }
+
 
     @AnyThread
     public Future<String> echoAsync(String msg) {
